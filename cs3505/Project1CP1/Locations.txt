@@ -1,0 +1,11 @@
+﻿Carlos Martinez
+Project 1
+Checkpoint 1
+CS 3505
+Jan 24, 2017
+
+
+Locations
+ffmpeg/libavcodec/bmp.c
+ffmpeg/libavcodec/pngdec.c
+ffmpeg/libavformat/wavdec.c

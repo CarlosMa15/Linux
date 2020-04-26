@@ -1,0 +1,209 @@
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <stdio.h>
+#include "boost/date_time/gregorian/gregorian.hpp"
+#include "food_item.h"
+#include "warehouse.h"
+#include "shipment.h"
+
+// #include "report_generator.h"
+
+
+std::string itos(int num);
+void parse_inputs(char* filename);
+void add_item(std::vector<std::string> * tokens);
+void add_warehouse(std::string w_name);
+shipment make_shipment(std::vector<std::string> * tokens);
+void generate_report();
+
+boost::gregorian::date shipment_date;
+std::map<std::string, food_item> food_items;
+std::map<std::string, warehouse> warehouses;
+std::vector<shipment> underfilled_orders;
+std::map<const food_item, int> popularity;
+
+int main(int argc, char** argv)
+{
+	if (argc < 2)
+		std::cerr << "ERROR: A filename is not supplied.\n";
+
+	parse_inputs(argv[1]);
+	generate_report();
+}
+
+void parse_inputs(char* filename)
+{
+	std::ifstream infile(filename);
+	std::string line;
+
+	while (std::getline(infile, line))
+	{
+		std::istringstream iss(line);
+		std::vector<std::string> tokens((std::istream_iterator<std::string>(iss)),
+							  std::istream_iterator<std::string>());
+
+		// Adds the food type to vector of different foods
+		// if there's a duplicate -- keeps the first UPC
+		if (line.rfind("FoodItem", 0) == 0)
+		{
+			add_item(&tokens);
+			continue;
+		}
+
+		else if (line.rfind("Warehouse", 0) == 0)
+		{
+			add_warehouse(tokens[2]);
+			continue;
+		}
+
+		else if (line.rfind("Start date:", 0) == 0)
+		{
+			std::string start_year = tokens[2].substr(6);
+			std::string start_month = tokens[2].substr(0,2);
+			std::string start_day = tokens[2].substr(3,2);
+			shipment_date = boost::gregorian::from_undelimited_string(start_year+start_month+start_day);
+			// std::cout << shipment_date << "\n";
+			continue;
+		}
+
+		else if (line.rfind	("Next day:") == 0)
+		{
+			shipment_date = shipment_date + boost::gregorian::days(1);
+			// std::cout << shipment_date << "\n";
+			continue;
+		}
+
+		else if (line.rfind("Request:") == 0)
+		{
+			std::string _whname = tokens[3];
+
+			shipment _shipment = make_shipment(&tokens);
+      popularity[_shipment.f_item]++;
+      // std::cout << _whname << "\n";
+      if (warehouses[_whname].request(_shipment) == false) {
+        underfilled_orders.push_back(_shipment);
+      }
+			// std::cout << _shipment.f_item.Name << "\n";
+			continue;
+		}
+
+		else if (line.rfind("Receive:") == 0)
+		{
+			std::string _whname = tokens[3];
+			shipment _shipment = make_shipment(&tokens);
+      warehouses[_whname].receive(_shipment);
+			// std::cout << _shipment.f_item.Name << "\n";
+			continue;
+		}
+	}
+}
+
+void add_item(std::vector<std::string> * tokens_ptr){
+	std::string item_name = "";
+	for (int i = 9; i < tokens_ptr->size(); i++){
+		item_name += (*tokens_ptr)[i];
+		item_name += " ";
+	}
+
+	food_item f((*tokens_ptr)[4], (*tokens_ptr)[7], item_name);
+	food_items.insert(std::pair<std::string, food_item>(f.UPC,f));
+
+	// std::cout << item_name << "\n";
+}
+
+void add_warehouse(std::string w_name)
+{
+  warehouse w(w_name);
+  warehouses[w_name] = w;
+	// warehouses.insert(std::pair<std::string, warehouse>(w_name, w));
+}
+
+shipment make_shipment(std::vector<std::string> * tokens_ptr)
+{
+	std::stringstream q((*tokens_ptr)[2]);
+	int _quantity;
+	q >> _quantity;
+	std::string _upc = (*tokens_ptr)[1];
+
+	shipment _shipment = {food_items[_upc], shipment_date, _quantity};
+	return _shipment;
+}
+
+void generate_report()
+{
+	// std::cerr << "Generation not implemented yet.\n";
+  std::cout << "Report by Christopher DuHadway and Connor Parrish" << std::endl;
+  std::cout << std::endl;
+  std::set<std::string> set;
+
+  std::cout << "Underfilled orders:" << std::endl;
+  for (int idx = 0; idx < underfilled_orders.size(); idx++) {
+    boost::gregorian::date date  = underfilled_orders[idx].date;
+    set.insert(itos(date.month()) + "/" + itos(date.day()) + "/" + itos(date.year()) + " " +  underfilled_orders[idx].f_item.UPC + " " + underfilled_orders[idx].f_item.Name);
+  }
+  for (std::set<std::string>::iterator it = set.begin(); it != set.end(); ++it)
+  {
+    std::cout << *it << std::endl;
+  }
+  std::cout << std::endl;
+
+  std::cout << "Well-Stocked Products:"<< std::endl;
+  std::map<const food_item, int> stock;
+  for (std::map<const std::string,warehouse>::iterator it = warehouses.begin(); it!=warehouses.end(); ++it) {
+    std::vector<shipment> vector_inventory = it->second.get_inventory();
+    // std::set<shipment> cur_inventory;
+
+    for (int idx = 0; idx < vector_inventory.size(); idx++) {
+      // cur_inventory.insert(vector_inventory[idx]);
+      stock[vector_inventory[idx].f_item]++;
+    }
+  }
+  for (std::map<const food_item, int>::iterator it = stock.begin(); it!=stock.end(); ++it) {
+    if (it->second > 1) {
+      std::cout << it->first.UPC + " " + it->first.Name << std::endl;
+    }
+  }
+  std::cout << std::endl;
+
+  std::cout << "Most Popular Products:"<< std::endl;
+  std::map<int, food_item> favorites;
+  // std::pair<food_item, int> first = std::make_pair(food_item("", "", ""), -1);
+  // std::pair<food_item, int> second;
+  // std::pair<food_item, int> third;
+  // for (std::map<food_item, int>::iterator it = popularity.begin(); it!=popularity.end(); ++it) {
+    // if (it->second > third.second)
+      // third = *it;
+    // if (it->second > second.second){
+      // third = second;
+      // second = *it;
+    // }
+    // if (it->second > third.second){
+      // third = second;
+      // second = first;
+      // first = *it;
+    // }
+  // }
+  // if (first.second > -1)
+    // std::cout << first.second << " " << first.first.UPC << " " << first.first.Name << std::endl;
+
+
+
+std::map<std::string, warehouse> warehouses;
+}
+
+/*
+ * Converts an integer to a string
+ * inputs:
+ * int num: the integer to be converted
+ * outputs:
+ * string: the string representation of the given integer
+ * Post Condition:
+ */
+std::string itos(int num){
+    //Magic box that converts an int to string, thanks to
+    //www.cplusplus.com/articles/D9j2Nwbp/
+    return static_cast<std::ostringstream*>( &(std::ostringstream() << num) )->str();
+}
