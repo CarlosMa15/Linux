@@ -1,0 +1,17 @@
+#include "csapp.h"
+
+int main()
+{
+  char* args[] = {"/bin/date", NULL};
+  int status;
+
+  printf("Running %s...\n", args[0]);
+
+  if (Fork() == 0) {
+    Execve( args[0], args, environ);
+  }
+
+  Wait(&status);
+
+  return 0;
+}
