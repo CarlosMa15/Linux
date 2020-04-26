@@ -1,0 +1,11 @@
+#include<stdio.h>
+int main()
+{
+  int i = -1;
+
+  unsigned int u = i;
+
+  printf("%u\n",u);
+
+  return 0;
+}
