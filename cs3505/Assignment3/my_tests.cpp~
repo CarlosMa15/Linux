@@ -1,0 +1,289 @@
+/*
+  This is a tester for string_set class
+*/
+
+#include <iostream>
+#include <fstream>
+#include <set>
+#include <iterator>
+#include "string_set.h"
+#include "node.h"
+#include <exception>
+#include <signal.h>
+#include <unistd.h>
+#include <string.h>
+
+using namespace std;
+
+/*
+  This handles the segment fault
+*/
+void segfault_sigaction(int signal, siginfo_t *si, void *arg)
+{
+  printf("Segment fault was thrown\n");
+  throw 99;
+}
+
+int main()
+{
+  bool sizeTest = false; // size method
+  bool conatinsTest = false; // contains method
+  bool addTest = false; // add method
+  bool getElTest = false; // get elements method
+  bool sCTest = false; // second constructor
+  bool equalTest = false; // = operator
+  bool oDTest = false; // object distructor
+  bool nDTest = false; // node distructor
+  bool distroyedTest = false; // removed method
+
+  {
+
+  // Creates a string set
+   cs3505::string_set  mySet(9);
+   int thirdElCounter = 0;
+
+   cout<<endl;
+
+   try{// Checks if adding failed
+     
+     // Used to catch segmentation faults
+     struct sigaction sa;
+     memset(&sa, 0, sizeof(struct sigaction));
+     sigemptyset(&sa.sa_mask);
+     sa.sa_sigaction = segfault_sigaction;
+     sa.sa_flags   = SA_SIGINFO;
+     sigaction(SIGSEGV, &sa, NULL);
+
+     // Adds elements to the string set
+     mySet.add("Adrian");
+     mySet.add("Balto");
+     mySet.add("Carlos");
+     mySet.add("David");
+     mySet.add("Elizabeth");
+     mySet.add("Fred");
+     mySet.add("Greg");
+     mySet.add("Horse");
+     mySet.add("Iziac");
+     mySet.add("Jackson");
+     mySet.add("Kango");
+     mySet.add("Leonardo");
+     mySet.add("Monika");
+     mySet.add("Natalia");
+     mySet.add("Opera");
+     mySet.add("Panda");
+     mySet.add("Queen");
+     mySet.add("Richard");
+     mySet.add("Samantha");
+     mySet.add("Turtle");
+     mySet.add("Unicorn");
+     mySet.add("Victoria");
+     mySet.add("William");
+     mySet.add("Xtreme");
+     mySet.add("Yellow");
+     mySet.add("Zootopia");
+   }catch(exception& ex){
+     cout<<"Add Method call failed\n";
+     cout<<"Tests Failed\n";
+     return 0;
+   }catch(int x){
+     cout<<"Add Method call failed\n";
+     cout<<"Tests Failed\n";
+     return 0;
+   }
+   
+   // Used to test the second constructor
+   cout<<"These are the elements of the set made\n"
+       <<"from the second contructor created from\n"
+       <<"Another string_set:\n";
+   int secondElementsCounter = 0;
+   cs3505::string_set  mySet1(mySet);
+   vector<string> contents1(mySet1.get_elements());
+   for(vector<string>::iterator iter = contents1.begin();
+	 iter != contents1.end();iter++ ){
+       cout <<"Content: "<< *iter << endl;
+       secondElementsCounter++;
+   }
+
+   // used to test the = operator
+   cout<<"\nThese are the elements from the set\n"
+	 <<"made from the = operator\n";
+   cs3505::string_set  mySet2 = mySet1;
+   vector<string> contents2(mySet2.get_elements());
+   for(vector<string>::iterator iter = contents2.begin();
+	 iter != contents2.end();iter++ ){
+       cout <<"Content: "<< *iter << endl;
+       thirdElCounter++;
+   }
+   
+   
+   // used to test first constructor
+   int elementsCounter = 0;
+   cout<<"\nThese are the elements of the set:"<<endl;
+   vector<string> contents(mySet.get_elements());
+
+   for(vector<string>::iterator iter = contents.begin();
+	 iter != contents.end();iter++ ){
+       cout <<"Content: "<< *iter << endl;
+       elementsCounter++;
+   }
+   
+   // Tests the size method
+   bool sizeChecker = false;
+   if(mySet.size() == 26){
+     sizeChecker = true;
+     cout<<"\nSize Method Test Passed\n";
+     sizeTest = true;
+   } else {
+     cout<<"\nSize Method Test Failed\n";
+   }
+
+   // Tests contains method
+   bool containsChecker = false;
+   if(mySet.contains("Adrian") && mySet.contains("Balto") 
+      && mySet.contains("Carlos") && mySet.contains("David") 
+      && mySet.contains("Elizabeth")&& mySet.contains("Fred")
+      && mySet.contains("Greg")&& mySet.contains("Horse")
+      && mySet.contains("Iziac")&& mySet.contains("Jackson")
+      && mySet.contains("Kango")&& mySet.contains("Leonardo")
+      && mySet.contains("Monika")&& mySet.contains("Natalia")
+      && mySet.contains("Opera")&& mySet.contains("Panda")
+      && mySet.contains("Queen")&& mySet.contains("Richard")
+      && mySet.contains("Samantha")&& mySet.contains("Turtle")
+      && mySet.contains("Unicorn")&& mySet.contains("Victoria")
+      && mySet.contains("William")&& mySet.contains("Xtreme")
+      && mySet.contains("Yellow")&& mySet.contains("Zootopia")
+      && !mySet.contains("Leonardo1")){
+     cout<<"\nContains Method Test Passed\n";
+     conatinsTest = true;
+     containsChecker = true;
+   }else{
+     cout<<"\nContains Method Test Failed\n";
+   }
+   
+   if(containsChecker && sizeChecker){
+     cout<<"\nAdd Method Test Passed\n";
+     addTest = true;
+   } else {
+     cout<<"\nAdd Method Test Failed\n";
+   }
+
+   // Tests the get elements method
+   if(elementsCounter == 26 && secondElementsCounter ==  26
+      && thirdElCounter == 26){
+     cout<<"\nGet_Elements Method Passed\n";
+     getElTest = true;
+   }else{
+     cout<<"\nGet_Elements Method Failed\n";
+   }
+
+   // Second constructor test
+   if(secondElementsCounter == 26){
+     cout<<"\nSecond Constructor Test Passed\n";
+     sCTest = true;
+   } else {
+     cout<<"\nSecond Constructor Test Failed\n";
+   }
+
+   // = operator test
+   if(thirdElCounter == 26){
+     equalTest = true;
+     cout<<"\n= Operator Test Passed\n";
+   }else {
+     cout<<"\n= Operator Test Failed\n";
+   }
+
+   /*
+     This is Testing the removes method
+     Based of the elements I added and how the hash code
+     work, the words (Adrian,Queen,Yellow). should hash
+     to the same place and be part of the same chain.
+     since their is only three elements in the chain, we
+     are testing weather the removes method works removing
+     the first item,a middle item, and the last item in the
+     chain. Also all the chain
+   */
+   cs3505::string_set  mySet3 = mySet2;
+   cs3505::string_set  mySet4 = mySet3;
+
+   mySet.remove("Adrian");
+   mySet3.remove("Queen");
+   mySet4.remove("Yellow");
+   mySet1.remove("Queen");
+   mySet2.remove("Yellow");
+   mySet.remove("Queen");
+   mySet.remove("Yellow");
+   
+
+   if(mySet.contains("Adrian") && mySet3.contains("Queen") 
+      && mySet4.contains("Yellow") && mySet1.contains("Queen") 
+      && mySet2.contains("Yellow") && mySet.contains("Queen") 
+      && mySet.contains("Yellow") && mySet1.size() == 25 
+      && mySet.size() == 23){
+     cout<<"\nRemove Method Test Failed\n";
+   }else{
+     distroyedTest = true;
+     cout<<"\nRemove Method Test Passed\n";
+   }
+
+   // used to test first constructor
+   cout<<"\nThese are the elements of the set:"<<endl;
+   vector<string> content(mySet.get_elements());
+
+   for(vector<string>::iterator iter = content.begin();
+	 iter != content.end();iter++ ){
+       cout <<"Content: "<< *iter << endl;
+   }
+   cout<<"My Set Size: "<<mySet.size()<<endl;
+
+   mySet.add("Adrian");
+   mySet.add("Queen");
+   mySet.add("Yellow");
+
+   // used to test first constructor
+   cout<<"\nThese are the elements of the set:"<<endl;
+   vector<string> conten(mySet.get_elements());
+
+   for(vector<string>::iterator iter = conten.begin();
+	 iter != conten.end();iter++ ){
+       cout <<"Content: "<< *iter << endl;
+   }
+   cout<<"My Set Size: "<<mySet.size()<<endl;
+
+   cout<<"\nFunctionalty Test After Remove Passed"<<endl<<endl;
+
+  }
+  
+  // Now that the objects have been destroyed, I will simply call my auditing
+  // code to print out how many times constructors have been called, and
+  // how many times destructors have been called.  They should exactly match.
+  // If not, we have a memory problem.
+
+  cout << "Class cs3505::string_set:" << endl;
+  cout << "    Objects created:  " << cs3505::string_set::constructor_count() << endl;
+  cout << "    Objects deleted:  " << cs3505::string_set::destructor_count() << endl;
+  if(cs3505::string_set::constructor_count() == cs3505::string_set::destructor_count()){
+    cout<<"Object distroyed test Passed\n\n";
+    oDTest = true;
+  }else{
+    cout<<"Object distroyed test Failed\n\n";
+  }
+
+  cout << "Class cs3505::node:" << endl;
+  cout << "    Objects created:  " << cs3505::node::constructor_count() << endl;
+  cout << "    Objects deleted:  " << cs3505::node::destructor_count() << endl;
+  if(cs3505::node::constructor_count() == cs3505::node::destructor_count()){
+    cout<<"Node distroyed test Passed\n\n";
+    nDTest = true;
+  }else{
+    cout<<"Node distroyed test Failed\n\n";
+  }
+
+  if( sizeTest && addTest && getElTest &&  sCTest && equalTest 
+      &&  oDTest&& nDTest && distroyedTest){
+    cout<<"Test Passed"<<endl;
+  }else{
+    cout<<"Tests Failed"<<endl;
+  }
+
+  // Now we're really done.  End main.
+}

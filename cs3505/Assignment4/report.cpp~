@@ -1,0 +1,383 @@
+/*
+ *Assignemt 4
+ *Carlos Martinez & Lukas Gust
+ *March 07, 2018
+ *
+ *This is the report file that creates a report out of given 
+ *warehouse inventory files.
+ */
+
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include "warehouse.h"
+#include "foodItem.h"
+#include "request.h"
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <map>
+#include <set>
+
+using namespace std;
+using namespace boost::gregorian;
+
+//Type definitions for the most frequently used std objects
+typedef set<request> requestSet;            //set of unique requests
+typedef map<string, warehouse> warehouseMap;//map of warehouse names to the warehouse object with that name
+typedef map<string, string> upcNameLookup;  //map of upc's to the name of that upc
+typedef vector<foodItem> foodList;          //vector of fooditems
+
+//lists and maps
+foodList foodItems;                   //all fooditems that exist in the file
+upcNameLookup foodNameLookup;         //look up of upc's to name
+warehouseMap warehouses;              //map of warehouses in the file
+map<string,long long> requestQuantity;//map of the quantity of requests of a given upc
+map<string,set<string> > wellStocked; //map of upc's to a set of warhouse names associated with well stocked 
+
+string mostRequested;             // Keeps track of the most popular item
+string secondMostRequested;       // Keeps track of the second most popular item
+string thirdMostRequested;        // Keeps track of the third most popular item
+
+// Helper mthods for class report
+date getDate(const string & command); // takes a string and calulates the date
+void calMostRequested(string num);   //  helper method to help keep track of most popular
+string getUnfilledLine(const request & req); // helper for unfilled orders
+
+int main(int argc, char* argv[])
+{
+  date currentDate;// current date, updated day to day
+  bool itemChecker = true; // used to control item quantity map
+
+  // Checks if a file was given as argument
+  if(argc < 1)
+  {
+    cout << "Specify file for inventory report." << endl;
+    return 1;
+  }
+
+  
+  ifstream file(argv[1]); // to read the file, argv[1] has file name
+  string line;
+  char textLine[255]; // to hold the text of the line
+
+  while(getline(file, line)) { // Reads file line by line
+    istringstream iss(line);
+    string word;
+    while(iss >> word) { // reads line word by word
+
+      if(word == "FoodItem") // If line is a food item
+      {
+	string upc;
+	int shelfLife;
+	string name;
+	
+	// get info to create food items
+	iss >> word >> word >> word;//'- UPC Code:'
+	iss >> upc;
+	iss >> word >> word; //'Shelf Life:'
+	iss >> shelfLife;
+	iss >> word; //'name:
+
+	while(iss >> word){
+	  name = name + word + " ";
+	}
+
+	string name1 = name.substr(name.size() - 1,1);
+	if(name1 == " "){
+	  name.resize(name.size()-1);
+	}
+
+	foodItem food(upc, shelfLife, name);
+	foodItems.push_back(food);
+	foodNameLookup[upc] = name;
+      }
+      else if(word == "Warehouse") // If item is a warehouse
+      {
+	// get info and create warehouses
+	string name;
+	iss >> word;
+	iss >> name;
+
+	while(iss >> word){
+	  name = name + word + " ";
+	}
+
+	string name1 = name.substr(name.size() - 1,1);
+	if(name1 == " "){
+	  name.resize(name.size()-1);
+	}
+
+	warehouse newWarehouse(name, foodItems);
+	warehouses[name] = newWarehouse;
+
+	// If you get to the warehouses, then you got all the fooditems,
+	// Calculates once the most requested based off the UPC code of food items
+	if(itemChecker){
+	  foodList::iterator pos;
+	  for (pos = foodItems.begin(); pos != foodItems.end(); ++pos) {
+	    string upc = (pos->getUPC());
+	    requestQuantity[upc] = 0;	    
+	      
+	      if(upc < thirdMostRequested){
+		thirdMostRequested = (upc);
+	      }
+	      if(thirdMostRequested < secondMostRequested) {
+		string temp = thirdMostRequested;
+		thirdMostRequested = secondMostRequested;
+		secondMostRequested = temp;
+	      }
+	      if(secondMostRequested < mostRequested){
+		string temp = secondMostRequested;
+		secondMostRequested = mostRequested;
+		mostRequested = temp;
+	      }
+	    }
+	    itemChecker = false;
+	  }
+      }
+      else if(word == "Start") // If line is start date
+      {
+	currentDate = getDate(line); // gets the start date from the line
+      }
+      else if(word == "Receive:") // If line is a receive to warehouse
+      {
+	string upc;
+	int quantity;
+	string name;
+	bool check = false;
+
+	// gets info to handle receives by warehouse
+	iss >> upc;
+	iss >> quantity;
+	iss >> name;
+
+	while(iss >> word){
+	  name = name + word + " ";
+	}
+
+	string name1 = name.substr(name.size() - 1,1);
+	if(name1 == " "){
+	  name.resize(name.size()-1);
+	}
+	
+	if(warehouses[name].getItemCount(upc) <= 0)
+	  check = true;
+
+	warehouses[name].receiveItems(upc, quantity);
+
+	if(check && warehouses[name].getItemCount(upc) > 0)
+	    wellStocked[upc].insert(name);
+
+      }
+      else if(word == "Request:") // if item is request to warehouse
+      {
+	struct request req;
+	int quantity;
+	string name;
+
+	// get info to handle request
+	iss >> req.upc;
+	req.date = currentDate;
+	iss >> quantity;
+	iss >> name;
+
+	while(iss >> word){
+	  name = name + word + " ";
+	}
+
+	string name1 = name.substr(name.size() - 1,1);
+	if(name1 == " "){
+	  name.resize(name.size()-1);
+	}
+	
+	string upc = req.upc;
+	requestQuantity[upc] += quantity;
+	calMostRequested(upc);
+
+	warehouses[name].requestItems(req, quantity);
+
+      }
+      else if(word == "Next") // if line is a next day
+      {
+	iss >> word; //"Day:"
+
+	// handles expired items, requests and the date
+	for(warehouseMap::iterator it = warehouses.begin(); it != warehouses.end(); it++)
+	  it->second.nextDay(wellStocked);
+
+	days day(1);
+	currentDate = currentDate + day;
+      }
+      else if(word == "End") // if at the end
+      {
+	// handle requests only
+        for(warehouseMap::iterator it = warehouses.begin(); it != warehouses.end(); it++)
+	  it->second.end(wellStocked);
+      }
+    }
+  }
+    
+  file.close();
+
+
+
+  cout << "Report by Lukas Gust & Carlos Martinez" << endl;
+  cout << endl;
+
+  //unfilled
+  cout << "Underfilled orders:" << endl;
+  requestSet unfilled;
+
+  for(warehouseMap::iterator it = warehouses.begin(); it != warehouses.end(); it++)
+  {
+    requestSet tempUnfilled(it->second.getUnfilledReq());
+    requestSet::iterator unreq;
+    for(unreq = tempUnfilled.begin(); unreq != tempUnfilled.end(); unreq++)
+      unfilled.insert(*unreq);
+  }
+  
+  for(requestSet::iterator unreq = unfilled.begin(); unreq != unfilled.end(); unreq++){
+    string name = getUnfilledLine(*unreq);
+    string name1 = name.substr(name.size() - 1,1);
+    if(name1 == " "){
+      name.resize(name.size()-1);
+    }
+    cout << name << endl;
+  }
+  cout << endl;
+
+  
+  // This handles well stocked products report
+  cout << "Well-Stocked Products:" << endl;
+  map<string,set <string> >::iterator position;
+
+  for (position = wellStocked.begin(); position != wellStocked.end(); ++ position) {
+    if(wellStocked[position->first].size() > 1){
+      string name = foodNameLookup[position->first];
+      string name1 = name.substr(name.size() - 1,1);
+      if(name1 == " "){
+	name.resize(name.size()-1);
+      }
+      cout<< position->first << " " << name << endl;
+    }
+  }
+  cout << endl;
+  
+  // handles the most popular part of the report
+  cout << "Most Popular Products:" << endl;
+  // prints the most requested
+  string name = foodNameLookup[mostRequested];
+  string name1 = name.substr(name.size() - 1,1);
+    if(name1 == " ")
+      name.resize(name.size()-1);
+
+  cout << requestQuantity[mostRequested] << " " 
+       << mostRequested << " " << name << endl;
+
+  // prints second most request if their is one
+  if(foodItems.size() > 1){
+    string name = foodNameLookup[secondMostRequested];
+    string name1 = name.substr(name.size() - 1,1);
+    if(name1 == " ")
+      name.resize(name.size()-1);
+
+    cout << requestQuantity[secondMostRequested] << " " 
+	 << secondMostRequested << " " << name << endl;
+  }
+
+  // prints thirds most requested if their is one
+  if(foodItems.size() > 2){
+    string name = foodNameLookup[thirdMostRequested];
+    string name1 = name.substr(name.size() - 1,1);
+    if(name1 == " ")
+      name.resize(name.size()-1);
+
+    cout << requestQuantity[thirdMostRequested] << " " 
+	 << thirdMostRequested << " " << name << endl;
+  }
+}
+
+/*
+ *Constructs the line for the underfilled order section.
+ */
+string getUnfilledLine(const request & req)
+{
+  date d = req.date;
+  string upc = req.upc;
+
+  date::ymd_type ymd = d.year_month_day();
+  unsigned short month = ymd.month.as_number();
+  unsigned short year = ymd.year;
+  unsigned short day = ymd.day;
+
+  stringstream ss;
+  if(month < 10)
+    ss << "0" << month;
+  else
+    ss << month;
+
+  ss << "/";
+
+  if(day < 10)
+    ss << "0" << day;
+  else
+    ss << day;
+  
+  ss << "/" << year << " ";
+
+  ss << upc << " ";
+  
+  ss << foodNameLookup[upc];
+  
+  return ss.str();
+}
+
+/*
+ *Gets the date from the date line in the file
+ */
+date getDate(const string & line){
+  string month = line.substr (12,2);
+  string day = line.substr (15,2);
+  string year = line.substr (18,4);
+  string date = year + month + day;
+
+  return date_from_iso_string(date);
+}
+
+/*
+ *Calculates the most requested items
+ */
+void calMostRequested(string num){
+  if(requestQuantity[num] > requestQuantity[thirdMostRequested] && num != mostRequested 
+     && num != secondMostRequested){ // Quantity NO Duplicates
+    thirdMostRequested = num;
+  }
+  if(requestQuantity[num] == requestQuantity[thirdMostRequested] 
+     && num < thirdMostRequested && num != mostRequested 
+     && num != secondMostRequested){ // UPC code NO Duplicates
+    thirdMostRequested = num;
+  }
+  if(requestQuantity[thirdMostRequested] > requestQuantity[secondMostRequested]) { // Quantity
+    string temp = thirdMostRequested;
+    thirdMostRequested = secondMostRequested;
+    secondMostRequested = temp;
+  }
+  if(requestQuantity[thirdMostRequested] == requestQuantity[secondMostRequested] 
+     && thirdMostRequested < secondMostRequested) { // UPC code
+    string temp = thirdMostRequested;
+    thirdMostRequested = secondMostRequested;
+    secondMostRequested = temp;
+  }
+  if(requestQuantity[secondMostRequested] > requestQuantity[mostRequested]){ // Quantity
+    string temp = secondMostRequested;
+    secondMostRequested = mostRequested;
+    mostRequested = temp;
+  }
+  if(requestQuantity[secondMostRequested] == requestQuantity[mostRequested]
+     && secondMostRequested < mostRequested){ // UPC code
+    string temp = secondMostRequested;
+    secondMostRequested = mostRequested;
+    mostRequested = temp;
+  }
+}
