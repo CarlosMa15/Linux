@@ -1,0 +1,35 @@
+Date: 4/23/2018
+Authors: Lukas Gust, Christopher Lyons, Carlos Martinez, & Gabriel Robinson
+
+This is our collaborative spreadsheet application for CS 3505 with Peter Jensen. It allows you to collaboratively maintain and edit software across
+a network. The SpreadsheetGUI was created by Lukas Gust, Carlos Martinez in CS 3500 and modified by the authors of this
+application for CS 3505. The SpreadsheetPanel was originally created by Prof. Joe Zachary for CS 3500 and modified by the authors of
+this application for CS 3505.
+
+/////How to connect//////////////////////////////////////////
+
+To begin, the SpreadsheetServer project should be compiled and can be done with the make file. Once this is completed
+the server can be started by entering ./spreadsheet_server into your terminal. The server will then begin listening for
+new clients. Simultaneously, you can open the SpreadsheetGUI. 
+
+/////Functionality - Server//////////////////////////////////////////
+
+The server may be gracefully shutdown at any time by typing "quit" into the console.
+
+/////Functionality - Client//////////////////////////////////////////
+
+Once the GUI is up and running you will see a textbox in 
+the upper right hand corner. Enter the URL of the cade machine that the server is running on and hit connect. At this 
+point you can open a spreadsheet. You can either choose a preexisting spreadsheet by selecting from the dropdown, or type
+the name of a new spreadsheet you would like to create.
+
+Once you have joined a new session, you may start editing the spreadsheet itself, this can be accomplished by navigating 
+using the arrow keys or by using your mouse to change the current selection, then when you want to edit simply type your
+text/formula and hit either enter (to go down one cell) or tab (to go right one cell). Important: Arrow Keys will only
+change the current selection and any new text will be removed and the previous state of that cell will be preserved.
+
+The user may at anytime request to revert or undo the state of the cell/spreadsheet respectively. Reverts are cell local
+changes that count as edits (they can be undone later if desired) and reverts the selected cell back to its previous state
+(if it has one). Undos are spreadsheet global meaning that the previous state of the spreadsheet will be displayed/updated.
+
+You may want to open a new spreadsheet, this can be done using the top left item on the menubar (File->New).
